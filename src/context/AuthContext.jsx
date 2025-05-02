@@ -22,6 +22,8 @@ export function AuthProvider({children}) {
 
         if(dto.jwtToken != null) {
             localStorage.setItem("token", dto.jwtToken);
+            console.log("token is saved");
+            
         }
         if(dto.usertype != null) {
             localStorage.setItem("user", dto.usertype);
@@ -34,7 +36,7 @@ export function AuthProvider({children}) {
         setUsertype(null);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-    }
+    } 
 
     useEffect(() => {
         const token = localStorage.getItem("token");

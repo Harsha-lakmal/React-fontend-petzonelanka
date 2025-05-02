@@ -11,6 +11,7 @@ import Login from './pages/login/Login';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
+import Navbar from './components/Navbar';
 
 function App() {
   return (

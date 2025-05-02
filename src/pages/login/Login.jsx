@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logo from "../../assets/magamarketlk.png";
+import logo from "../../assets/petzonlk.png";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import instance from "../../Service/AxiosHolder/AxiosHolder";
@@ -34,8 +34,8 @@ function Login() {
     async function submit(event) {
         event.preventDefault();
 
-        if (username === "" || password === "") {
-            setError("Username and Password are required");
+        if (email === "" || password === "") {
+            setError("email and Password are required");
             return;
         }
 
@@ -48,11 +48,13 @@ function Login() {
             setIsLoading(true);
             const response = await instance.post("/auth/login", data);
             login(response.data);
-            console.log(response.data.usertype);
+            console.log(response.data);
+            console.log(response.data.user.role);
+            
 
             
             showSuccess();
-            if(response.data.usertype == "admin" || response.data.usertype == "manager"){
+            if(response.data.user.role == "admin" || response.data.user.role == "manager"){
                 navigate("/home");
 
             }else{
@@ -75,7 +77,7 @@ function Login() {
             <div className="w-full max-w-md">
                 <div className="bg-white p-8 rounded-2xl shadow-lg">
                     <div className="flex justify-center mb-6">
-                        <img src={logo} alt="Company Logo" className="h-16" />
+                        <img src={logo} alt="Company Logo" className="h-16" style={{borderRadius : 50 , width : 100 , height : 100 }}  />
                     </div>
 
                     <div className="text-center mb-8">
@@ -92,17 +94,17 @@ function Login() {
                     <form onSubmit={submit} className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Username
+                                Email
                             </label>
-                            <input
+                            <input    
                                 type="text"
-                                value={username}
+                                value={email}
                                 onChange={(e) => {
-                                    setUsername(e.target.value);
+                                    setEmail(e.target.value);
                                     setError("");
                                 }}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
-                                placeholder="Enter your username"
+                                placeholder="Enter your email"
                             />
                         </div>
 
