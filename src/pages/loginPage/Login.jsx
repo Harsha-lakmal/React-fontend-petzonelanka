@@ -32,8 +32,8 @@ function Login() {
     async function submit(event) {
         event.preventDefault();
 
-        if (email === "" || password === "") {
-            setError("email and Password are required");
+        if (!email || !password) {
+            setError("Email and password are required");
             return;
         }
 
@@ -45,24 +45,23 @@ function Login() {
         try {
             setIsLoading(true);
             const response = await instance.post("/auth/login", data);
-            login(response.data);
-            console.log(response.data);
-            console.log(response.data.user.role);
             
+            if (response.data.user.role === "admin" || response.data.user.role === "manager") {
+                if (response.data.token) {
+                    localStorage.setItem('authToken', response.data.token);
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                    console.log("Token saved successfully");
+                }
 
-            
-            showSuccess();
-            if(response.data.user.role == "admin" || response.data.user.role == "manager"){
+                showSuccess();
                 navigate("/home");
-
-            }else{
+            } else {
+                showError("You don't have permission to access this system");
                 navigate("/error");
-
-
             }
         } catch (err) {
-            console.log(err);
-            const errorMessage = err.response?.data?.message || "Invalid username or password";
+            console.error("Login error:", err);
+            const errorMessage = err.response?.data?.message || "Invalid email or password";
             setError(errorMessage);
             showError(errorMessage);
         } finally {
@@ -75,7 +74,12 @@ function Login() {
             <div className="w-full max-w-md">
                 <div className="bg-white p-8 rounded-2xl shadow-lg">
                     <div className="flex justify-center mb-6">
-                        <img src={logo} alt="Company Logo" className="h-16" style={{borderRadius : 50 , width : 100 , height : 100 }}  />
+                        <img 
+                            src={logo} 
+                            alt="Company Logo" 
+                            className="h-16" 
+                            style={{ borderRadius: 50, width: 100, height: 100 }}  
+                        />
                     </div>
 
                     <div className="text-center mb-8">
@@ -95,7 +99,7 @@ function Login() {
                                 Email
                             </label>
                             <input    
-                                type="text"
+                                type="email" 
                                 value={email}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
@@ -103,6 +107,7 @@ function Login() {
                                 }}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
                                 placeholder="Enter your email"
+                                required
                             />
                         </div>
 
@@ -119,6 +124,7 @@ function Login() {
                                 }}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
                                 placeholder="Enter your password"
+                                required
                             />
                         </div>
 
