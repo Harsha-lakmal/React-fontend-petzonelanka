@@ -16,8 +16,8 @@ function Navbar() {
 
     const navItems = [
         { name: "Home", path: "/home", page: "home" },
-        { name: "Category", path: "/category", page: "category" },
-        { name: "Products", path: "/product", page: "product" },
+        { name: "Tpye", path: "/type", page: "type" },
+        { name: "Pets", path: "/pets", page: "pets" },
         { name: "Stock", path: "/stock", page: "stock" },
         { name: "User", path: "/user", page: "user" },
         { name: "Order", path: "/order", page: "order" },
@@ -57,7 +57,6 @@ function Navbar() {
                     </svg>
                 </button>
 
-                {/* Desktop Navigation */}
                 <div className="hidden w-full md:block md:w-auto">
                     <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-700 rounded-lg bg-gray-800 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-gray-900">
                         {navItems.map((item) => (
@@ -87,7 +86,6 @@ function Navbar() {
                     </ul>
                 </div>
 
-                {/* Mobile Navigation */}
                 {isOpen && (
                     <div className="w-full md:hidden">
                         <ul className="font-medium flex flex-col p-4 mt-4 border border-gray-700 rounded-lg bg-gray-800">

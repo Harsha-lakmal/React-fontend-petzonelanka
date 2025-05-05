@@ -11,7 +11,6 @@ import Login from './pages/login/Login';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
-import Navbar from './components/Navbar';
 
 function App() {
   return (
@@ -21,8 +20,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
           <Route path='/*' element={<Login />} />
             <Route path='/home' element={<Home />} />
-            <Route path='/category' element={<Category />} />
-            <Route path='/product' element={<Product />} />
+            <Route path='/type' element={<Category />} />
+            <Route path='/pets' element={<Product />} />
             <Route path='/order' element={<OrderHome />} />
             <Route path='/order/orders' element={<Orders />} />
             <Route path='/order/createorder' element={<CreateOrder />} />
