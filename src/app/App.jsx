@@ -10,7 +10,6 @@ import Login from '../pages/loginPage/Login';
 function App() {
   return (
     <Router>
-      <Navbar />
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/type" element={<Type />} />

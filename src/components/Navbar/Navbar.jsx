@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import logo from "../../assets/petzonlk.png";
 
 function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
+    const location = useLocation();
     const [activePage, setActivePage] = useState("home");
+
+    useEffect(() => {
+        const currentPath = location.pathname.split('/')[1] || 'home';
+        setActivePage(currentPath);
+    }, [location]);
 
     const handleNavClick = (page) => {
         setActivePage(page);
@@ -16,7 +23,7 @@ function Navbar() {
 
     const navItems = [
         { name: "Home", path: "/home", page: "home" },
-        { name: "Tpye", path: "/type", page: "type" },
+        { name: "Type", path: "/type", page: "type" },  // Fixed typo in "Type"
         { name: "Pets", path: "/pets", page: "pets" },
         { name: "Stock", path: "/stock", page: "stock" },
         { name: "User", path: "/user", page: "user" },
@@ -31,9 +38,9 @@ function Navbar() {
                     className="flex items-center space-x-3 rtl:space-x-reverse"
                     onClick={() => handleNavClick("home")}
                 >
-                    <img className="w-10 h-10" src={logo} alt="MegaMart Logo" style={{borderRadius  : 50 }} />
+                    <img className="w-10 h-10" src={logo} alt="PetZone Logo" style={{borderRadius: 50}} />
                     <span className="self-center text-xl font-bold whitespace-nowrap text-white hover:text-blue-500 transition-colors duration-300 font-sans">
-                    PetZone - Lanka
+                        PetZone - Lanka
                     </span>
                 </a>
 
@@ -122,7 +129,3 @@ function Navbar() {
 }
 
 export default Navbar;
-
-
-
- 
