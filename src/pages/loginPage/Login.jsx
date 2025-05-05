@@ -1,12 +1,10 @@
 import { useState } from "react";
 import logo from "../../assets/petzonlk.png";
-import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import instance from "../../Service/AxiosHolder/AxiosHolder";
 import Swal from 'sweetalert2';
 
 function Login() {
-    const { login } = useAuth();
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
