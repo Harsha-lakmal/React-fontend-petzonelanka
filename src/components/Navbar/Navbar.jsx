@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import logo from "../../assets/petzonlk.png";
+import { useNavigate } from "react-router-dom";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const [activePage, setActivePage] = useState("home");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const currentPath = location.pathname.split("/")[1] || "home";
@@ -21,6 +23,8 @@ function Navbar() {
     console.log("Logging out...");
 
     localStorage.removeItem("authToken");
+
+    navigate("/login");
   };
 
   const navItems = [
