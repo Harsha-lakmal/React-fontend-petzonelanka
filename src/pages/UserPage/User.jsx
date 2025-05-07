@@ -27,12 +27,6 @@ export default function User() {
     .then(response => {
       setUsers(response.data.users);
       setLoading(false);
-      Swal.fire({
-        icon: 'success',
-        title: 'Users loaded successfully',
-        showConfirmButton: false,
-        timer: 1500
-      });
     })
     .catch(err => {
       console.log(err);
@@ -50,19 +44,16 @@ export default function User() {
     getUserData();
   }, []);
 
-  // Update user
-  function updateUser(userId) {
-    console.log(userId);
-    
+  function updateUser(editingId) {
     const updatedUser = {
-      userId , 
+      id: editingId, 
       name: name,
       email: email,
       password: password,
       role: role
     };
 
-    instance.put(`/updateuser`, updatedUser, {
+    instance.put('/user/updateuser', updatedUser, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -82,12 +73,11 @@ export default function User() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to update user',
+        text: error.response?.data?.message || 'Failed to update user',
       });
     });
   }
 
-  // Delete user
   function deleteUser(userId) {
     Swal.fire({
       title: 'Are you sure?',
@@ -99,10 +89,11 @@ export default function User() {
       confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        instance.delete(`/deleteuser`, {
+        instance.delete(`/user/deleteuser`, {
           headers: {
             'Authorization': `Bearer ${token}`
-          }
+          },
+          data: { id: userId } 
         })
         .then(response => {
           Swal.fire(
@@ -117,7 +108,7 @@ export default function User() {
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: 'Failed to delete user',
+            text: error.response?.data?.message || 'Failed to delete user',
           });
         });
       }
@@ -153,18 +144,19 @@ export default function User() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to add user',
+        text: error.response?.data?.message || 'Failed to add user',
       });
     });
   }
 
   // Set form for editing
   function setEditForm(user) {
-    setEditingId(user._id);
+    setEditingId(user.id); // Changed from user.id to user._id
+    
     setName(user.name);
     setEmail(user.email);
     setRole(user.role);
-    // Don't set password for security reasons
+    setPassword(''); // Clear password field when editing
   }
 
   // Reset form
