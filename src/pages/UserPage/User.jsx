@@ -78,7 +78,9 @@ export default function User() {
     });
   }
 
-  function deleteUser(userId) {
+  function deleteUser(editingId) {
+    console.log("delete usaer id  :  "+editingId);
+    
     Swal.fire({
       title: 'Are you sure?',
       text: "You won't be able to revert this!",
