@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
-    background-color: rgb(203, 233, 233);
+:root {
+    min-height: 100vh;
+    background-image: linear-gradient(to bottom right, #f5f3ff, #ebf8ff);
 }

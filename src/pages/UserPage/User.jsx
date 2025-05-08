@@ -14,7 +14,6 @@ export default function User() {
   const [editingId, setEditingId] = useState(null);
   const token = localStorage.getItem('authToken');
 
-  // Fetch users
   function getUserData() {
     setLoading(true);
     setError(null);
@@ -149,17 +148,15 @@ export default function User() {
     });
   }
 
-  // Set form for editing
   function setEditForm(user) {
-    setEditingId(user._id); // Changed from user.id to user._id
+    setEditingId(user._id); 
     
     setName(user.name);
     setEmail(user.email);
     setRole(user.role);
-    setPassword(''); // Clear password field when editing
+    setPassword(''); 
   }
 
-  // Reset form
   function resetForm() {
     setEditingId(null);
     setName('');
@@ -168,7 +165,6 @@ export default function User() {
     setRole('user');
   }
 
-  // Handle form submission
   function handleSubmit(e) {
     e.preventDefault();
     if (editingId) {
