@@ -30,6 +30,7 @@ function Login() {
     }
 
     async function submit(event) {
+        event.preventDefault();
 
         if (!email || !password) {
             setError("Email and password are required");
@@ -44,7 +45,6 @@ function Login() {
         try {
             setIsLoading(true);
             const response = await instance.post("/auth/login", data);
-            
             
             if (response.data.user.role === "admin" || response.data.user.role === "manager") {
                 if (response.data.token) {

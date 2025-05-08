@@ -55,13 +55,16 @@ export default function Pets() {
   }
 
   // Delete pet
+  // Delete pet - FIXED FUNCTION
   function deletePet() {
     try {
-      instance
-        .delete(`/pets/deletePet/${petId}`, {
+      instance.delete('/pets/deletePet', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          data: {
+            petId: petId
+          }
         })
         .then((response) => {
           Swal.fire({
@@ -91,6 +94,7 @@ export default function Pets() {
       });
     }
   }
+
 
   // Update pet
   function updatePet(e) {
