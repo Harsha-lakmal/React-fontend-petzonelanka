@@ -33,7 +33,7 @@ function Navbar() {
     { name: "Pets", path: "/pets", page: "pets" },
     { name: "Stock", path: "/stock", page: "stock" },
     { name: "User", path: "/user", page: "user" },
-    { name: "Order", path: "/order", page: "order" },
+    { name: "Vlog", path: "/vlog", page: "vlog" },
   ];
 
   return (

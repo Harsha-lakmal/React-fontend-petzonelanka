@@ -10,14 +10,12 @@ export default function Type() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Get token from localStorage
   const token = localStorage.getItem("authToken");
 
   useEffect(() => {
     fetchPetTypes();
   }, []);
 
-  // Fetch all pet types
   const fetchPetTypes = () => {
     setLoading(true);
     instance
@@ -43,7 +41,6 @@ export default function Type() {
       });
   };
 
-  // Delete pet type with confirmation
   const deletePetType = (id) => {
     Swal.fire({
       title: 'Are you sure?',
@@ -88,7 +85,6 @@ export default function Type() {
     });
   };
 
-  // Update pet type
   const updatePetType = (e) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -140,7 +136,6 @@ export default function Type() {
       });
   };
 
-  // Add new pet type
   const addPetType = (e) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -189,14 +184,12 @@ export default function Type() {
       });
   };
 
-  // Set up form for editing
   const handleEdit = (type) => {
     setName(type.name);
     setPetTypeId(type.petTypeId);
     setIsEditing(true);
   };
 
-  // Cancel editing
   const handleCancel = () => {
     setName("");
     setPetTypeId("");
@@ -208,9 +201,7 @@ export default function Type() {
       <Navbar page="type" />
       
       <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-center mb-6 text-indigo-800">Pet Types Management</h1>
 
-        {/* Form */}
         <div className="bg-white shadow-md rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">
             {isEditing ? 'Update Pet Type' : 'Add New Pet Type'}

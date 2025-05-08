@@ -8,12 +8,10 @@ export default function Pets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Form states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
-  // Form fields
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('');
@@ -21,14 +19,12 @@ export default function Pets() {
   const [stock, setStock] = useState('');
   const [petId, setPetId] = useState(null);
   
-  // Get token from localStorage
   const token = localStorage.getItem("authToken");
 
   useEffect(() => {
     fetchPets();
   }, []);
 
-  // Fetch all pets
   function fetchPets() {
     setLoading(true);
     try {
@@ -54,8 +50,6 @@ export default function Pets() {
     }
   }
 
-  // Delete pet
-  // Delete pet - FIXED FUNCTION
   function deletePet() {
     try {
       instance.delete('/pets/deletePet', {
@@ -74,7 +68,7 @@ export default function Pets() {
             timer: 1500,
             showConfirmButton: false
           });
-          fetchPets(); // Refresh list after deletion
+          fetchPets();
           setIsDeleteModalOpen(false);
         })
         .catch((error) => {
@@ -96,7 +90,6 @@ export default function Pets() {
   }
 
 
-  // Update pet
   function updatePet(e) {
     e.preventDefault();
     const updateData = {
@@ -123,7 +116,7 @@ export default function Pets() {
             timer: 1500,
             showConfirmButton: false
           });
-          fetchPets(); // Refresh list after update
+          fetchPets(); 
           setIsUpdateModalOpen(false);
           resetForm();
         })
@@ -145,7 +138,6 @@ export default function Pets() {
     }
   }
 
-  // Add new pet
   function addPet(e) {
     e.preventDefault();
     const newPet = {
@@ -171,7 +163,7 @@ export default function Pets() {
             timer: 1500,
             showConfirmButton: false
           });
-          fetchPets(); // Refresh list after adding
+          fetchPets(); 
           setIsAddModalOpen(false);
           resetForm();
         })
@@ -193,7 +185,6 @@ export default function Pets() {
     }
   }
 
-  // Reset form fields
   function resetForm() {
     setName('');
     setDescription('');
@@ -203,7 +194,6 @@ export default function Pets() {
     setPetId(null);
   }
 
-  // Open edit modal with pet data
   function openUpdateModal(pet) {
     setPetId(pet.petId);
     setName(pet.name);
@@ -214,7 +204,6 @@ export default function Pets() {
     setIsUpdateModalOpen(true);
   }
 
-  // Open delete confirmation modal with SweetAlert2
   function openDeleteModal(id) {
     setPetId(id);
     Swal.fire({
@@ -238,7 +227,6 @@ export default function Pets() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-indigo-800">Pet Management</h1>
           <button 
             onClick={() => setIsAddModalOpen(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center"
@@ -304,7 +292,6 @@ export default function Pets() {
         )}
       </div>
 
-      {/* Add Pet Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
@@ -416,7 +403,6 @@ export default function Pets() {
         </div>
       )}
 
-      {/* Update Pet Modal */}
       {isUpdateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
@@ -528,7 +514,6 @@ export default function Pets() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal removed as we're using SweetAlert2 instead */}
     </div>
   );
 }
