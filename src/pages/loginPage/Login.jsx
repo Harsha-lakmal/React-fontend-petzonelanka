@@ -30,8 +30,8 @@ function Login() {
     }
 
     async function submit(event) {
-        event.preventDefault();
-
+        event.preventDefault(); // Prevent default form submission behavior
+        
         if (!email || !password) {
             setError("Email and password are required");
             return;
@@ -46,26 +46,29 @@ function Login() {
             setIsLoading(true);
             const response = await instance.post("/auth/login", data);
             
-            if (response.data.user.role === "admin" || response.data.user.role === "manager") {
-                if (response.data.token) {
-                    localStorage.setItem('authToken', response.data.token);
-                    localStorage.setItem('user', JSON.stringify(response.data.user));
-                    console.log("Token saved successfully");
-                }
+            if (response.data && response.data.user) {
+                if (response.data.user.role === "admin" || response.data.user.role === "manager") {
+                    if (response.data.token) {
+                        localStorage.setItem('authToken', response.data.token);
+                        localStorage.setItem('user', JSON.stringify(response.data.user));
+                    }
 
-                showSuccess();
-                navigate("/home");
+                    showSuccess();
+                    navigate("/home");
+                } else {
+                    showError("You don't have permission to access this system");
+                    setIsLoading(false); // Make sure to reset loading state
+                    navigate("/error");
+                }
             } else {
-                showError("You don't have permission to access this system");
-                navigate("/error");
+                throw new Error("Invalid response format");
             }
         } catch (err) {
             console.error("Login error:", err);
             const errorMessage = err.response?.data?.message || "Invalid email or password";
             setError(errorMessage);
             showError(errorMessage);
-        } finally {
-            setIsLoading(false);
+            setIsLoading(false); // Ensure loading state is reset on error
         }
     }
 
@@ -77,7 +80,7 @@ function Login() {
                         <img 
                             src={logo} 
                             alt="Company Logo" 
-                            className="h-16" 
+                            className="h-16 w-auto" 
                             style={{ borderRadius: 50, width: 100, height: 100 }}  
                         />
                     </div>
@@ -95,10 +98,11 @@ function Login() {
 
                     <form onSubmit={submit} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                                 Email
                             </label>
                             <input    
+                                id="email"
                                 type="email" 
                                 value={email}
                                 onChange={(e) => {
@@ -112,10 +116,11 @@ function Login() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                                 Password
                             </label>
                             <input
+                                id="password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => {
@@ -142,9 +147,13 @@ function Login() {
                             </div>
 
                             <div className="text-sm">
-                                <a href="#" className="font-medium text-sky-600 hover:text-sky-500">
+                                <button 
+                                    type="button"
+                                    className="font-medium text-sky-600 hover:text-sky-500"
+                                    onClick={() => navigate("/forgot-password")}
+                                >
                                     Forgot password?
-                                </a>
+                                </button>
                             </div>
                         </div>
 
@@ -167,9 +176,13 @@ function Login() {
 
                     <div className="mt-6 text-center text-sm text-gray-600">
                         Don't have an account?{' '}
-                        <a href="#" className="font-medium text-sky-600 hover:text-sky-500">
+                        <button 
+                            type="button"
+                            className="font-medium text-sky-600 hover:text-sky-500"
+                            onClick={() => navigate("/contact-admin")}
+                        >
                             Contact admin
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>

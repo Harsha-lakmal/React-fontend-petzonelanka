@@ -78,9 +78,7 @@ export default function User() {
     });
   }
 
-  function deleteUser(editingId) {
-    console.log("delete usaer id  :  "+editingId);
-    
+  function deleteUser(userId) {
     Swal.fire({
       title: 'Are you sure?',
       text: "You won't be able to revert this!",
@@ -153,7 +151,7 @@ export default function User() {
 
   // Set form for editing
   function setEditForm(user) {
-    setEditingId(user.id); // Changed from user.id to user._id
+    setEditingId(user._id); // Changed from user.id to user._id
     
     setName(user.name);
     setEmail(user.email);
@@ -334,4 +332,4 @@ export default function User() {
       </div>
     </div>
   );
-}
+}             
