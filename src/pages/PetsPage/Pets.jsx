@@ -10,7 +10,6 @@ export default function Pets() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -18,6 +17,8 @@ export default function Pets() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [petId, setPetId] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   
   const token = localStorage.getItem("authToken");
 
@@ -51,44 +52,126 @@ export default function Pets() {
   }
 
   function deletePet() {
-    try {
-      instance.delete('/pets/deletePet', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          data: {
-            petId: petId
-          }
-        })
-        .then((response) => {
-          Swal.fire({
-            icon: 'success',
-            title: 'Deleted!',
-            text: 'Pet has been deleted successfully',
-            timer: 1500,
-            showConfirmButton: false
-          });
-          fetchPets();
-          setIsDeleteModalOpen(false);
-        })
-        .catch((error) => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        try {
+          instance.delete('/pets/deletePet', {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              data: {
+                petId: petId
+              }
+            })
+            .then((response) => {
+              Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: 'Pet has been deleted successfully',
+                timer: 1500,
+                showConfirmButton: false
+              });
+              fetchPets();
+            })
+            .catch((error) => {
+              console.log(error);
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to delete pet',
+              });
+            });
+        } catch (error) {
           console.log(error);
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: 'Failed to delete pet',
+            text: 'Something went wrong',
           });
-        });
+        }
+      }
+    });
+  }
+
+  async function uploadImage(petId) {
+    console.log(petId);
+    
+    if (!imageFile) return;
+    
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    try {
+      await instance.post(`/pets/image/${petId}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      throw error;
+    }
+  }
+
+  async function addPet(e) {
+    e.preventDefault();
+    const newPet = {
+      name,
+      description,
+      type,
+      price,
+      stock,
+    };
+    
+    try {
+
+      const response = await instance.post("/pets/createPet", newPet, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      console.log(response);
+      
+      
+      const createdPetId = response.data.petId;
+      console.log("pet id : "+ createdPetId);
+      
+      
+      // Then upload the image if there is one
+      if (imageFile) {
+        await uploadImage(createdPetId);
+      }
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Added!',
+        text: 'New pet has been added successfully',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      
+      fetchPets();
+      setIsAddModalOpen(false);
+      resetForm();
     } catch (error) {
       console.log(error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Something went wrong',
+        text: error.response?.data?.message || 'Failed to add new pet',
       });
     }
   }
-
 
   function updatePet(e) {
     e.preventDefault();
@@ -108,7 +191,12 @@ export default function Pets() {
             Authorization: `Bearer ${token}`,
           },
         })
-        .then((response) => {
+        .then(async (response) => {
+          // Upload new image if selected
+          if (imageFile) {
+            await uploadImage(petId);
+          }
+          
           Swal.fire({
             icon: 'success',
             title: 'Updated!',
@@ -138,50 +226,16 @@ export default function Pets() {
     }
   }
 
-  function addPet(e) {
-    e.preventDefault();
-    const newPet = {
-      name,
-      description,
-      type,
-      price,
-      stock,
-    };
-    
-    try {
-      instance
-        .post("/pets/createPet", newPet, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((response) => {
-          Swal.fire({
-            icon: 'success',
-            title: 'Added!',
-            text: 'New pet has been added successfully',
-            timer: 1500,
-            showConfirmButton: false
-          });
-          fetchPets(); 
-          setIsAddModalOpen(false);
-          resetForm();
-        })
-        .catch((error) => {
-          console.log(error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to add new pet',
-          });
-        });
-    } catch (error) {
-      console.log(error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Something went wrong',
-      });
+  function handleImageChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -192,6 +246,8 @@ export default function Pets() {
     setPrice('');
     setStock('');
     setPetId(null);
+    setImageFile(null);
+    setImagePreview(null);
   }
 
   function openUpdateModal(pet) {
@@ -201,24 +257,8 @@ export default function Pets() {
     setType(pet.type);
     setPrice(pet.price);
     setStock(pet.stock);
+    // You might want to set a preview of the existing image here if available
     setIsUpdateModalOpen(true);
-  }
-
-  function openDeleteModal(id) {
-    setPetId(id);
-    Swal.fire({
-      title: 'Are you sure?',
-      text: "You won't be able to revert this!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        deletePet();
-      }
-    });
   }
 
   return (
@@ -237,7 +277,6 @@ export default function Pets() {
             Add New Pet
           </button>
         </div>
-
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -276,7 +315,7 @@ export default function Pets() {
                         </svg>
                       </button>
                       <button
-                        onClick={() => openDeleteModal(pet.petId)}
+                        onClick={() => deletePet(pet.petId)}
                         className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,7 +330,10 @@ export default function Pets() {
           </div>
         )}
       </div>
+         
 
+
+      {/* Add Pet Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
@@ -366,7 +408,7 @@ export default function Pets() {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="stock">
                   Stock
                 </label>
@@ -379,6 +421,32 @@ export default function Pets() {
                   onChange={(e) => setStock(e.target.value)}
                   required
                 />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="image">
+                  Pet Image
+                </label>
+                <div className="flex items-center">
+                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                    <span>Choose Image</span>
+                    <input 
+                      type="file" 
+                      id="image"
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                  {imagePreview && (
+                    <div className="ml-4 w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end">
                 <button
@@ -403,6 +471,7 @@ export default function Pets() {
         </div>
       )}
 
+      {/* Update Pet Modal */}
       {isUpdateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
@@ -477,7 +546,7 @@ export default function Pets() {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-stock">
                   Stock
                 </label>
@@ -490,6 +559,32 @@ export default function Pets() {
                   onChange={(e) => setStock(e.target.value)}
                   required
                 />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-image">
+                  Pet Image
+                </label>
+                <div className="flex items-center">
+                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                    <span>Change Image</span>
+                    <input 
+                      type="file" 
+                      id="update-image"
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                  {imagePreview && (
+                    <div className="ml-4 w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end">
                 <button
@@ -513,7 +608,30 @@ export default function Pets() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
