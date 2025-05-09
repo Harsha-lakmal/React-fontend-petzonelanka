@@ -51,7 +51,9 @@ export default function Pets() {
     }
   }
 
-  function deletePet() {
+  function deletePet(petId) {
+    console.log("pet id delete : " + petId);
+    
     Swal.fire({
       title: 'Are you sure?',
       text: "You won't be able to revert this!",
@@ -102,9 +104,7 @@ export default function Pets() {
   }
 
   async function uploadImage(petId) {
-    console.log(petId);
-    
-    if (!imageFile) return;
+    if (!imageFile) return false;
     
     const formData = new FormData();
     formData.append('image', imageFile);
@@ -116,14 +116,35 @@ export default function Pets() {
           'Content-Type': 'multipart/form-data'
         }
       });
+      return true;
     } catch (error) {
       console.error("Image upload failed:", error);
-      throw error;
+      return false;
     }
   }
 
   async function addPet(e) {
     e.preventDefault();
+    
+    // First check if image is selected and valid
+    if (!imageFile) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Image Required',
+        text: 'Please select an image for the pet',
+      });
+      return;
+    }
+
+    if (!imageFile.type.match('image.*')) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Image',
+        text: 'Please select a valid image file',
+      });
+      return;
+    }
+
     const newPet = {
       name,
       description,
@@ -133,36 +154,47 @@ export default function Pets() {
     };
     
     try {
-
+      // First create the pet
       const response = await instance.post("/pets/createPet", newPet, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
-      console.log(response);
-      
-      
       const createdPetId = response.data.petId;
-      console.log("pet id : "+ createdPetId);
       
+      // Then upload the image
+      const imageUploadSuccess = await uploadImage(createdPetId);
       
-      // Then upload the image if there is one
-      if (imageFile) {
-        await uploadImage(createdPetId);
+      if (imageUploadSuccess) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Added!',
+          text: 'New pet has been added successfully',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        
+        fetchPets();
+        setIsAddModalOpen(false);
+        resetForm();
+      } else {
+        // If image upload failed, delete the pet that was just created
+        await instance.delete('/pets/deletePet', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          data: {
+            petId: createdPetId
+          }
+        });
+        
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Image upload failed. The pet has not been added.',
+        });
       }
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Added!',
-        text: 'New pet has been added successfully',
-        timer: 1500,
-        showConfirmButton: false
-      });
-      
-      fetchPets();
-      setIsAddModalOpen(false);
-      resetForm();
     } catch (error) {
       console.log(error);
       Swal.fire({
@@ -173,8 +205,19 @@ export default function Pets() {
     }
   }
 
-  function updatePet(e) {
+  async function updatePet(e) {
     e.preventDefault();
+    
+    // Check if image is selected and valid
+    if (imageFile && !imageFile.type.match('image.*')) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Image',
+        text: 'Please select a valid image file',
+      });
+      return;
+    }
+
     const updateData = {
       petId,
       name,
@@ -185,43 +228,44 @@ export default function Pets() {
     };
     
     try {
-      instance
-        .put("/pets/updatePet", updateData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then(async (response) => {
-          // Upload new image if selected
-          if (imageFile) {
-            await uploadImage(petId);
-          }
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Updated!',
-            text: 'Pet information has been updated successfully',
-            timer: 1500,
-            showConfirmButton: false
-          });
-          fetchPets(); 
-          setIsUpdateModalOpen(false);
-          resetForm();
-        })
-        .catch((error) => {
-          console.log(error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Failed to update pet information',
-          });
+      // First update the pet details
+      await instance.put("/pets/updatePet", updateData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      // Then upload new image if selected
+      let imageUploadSuccess = true;
+      if (imageFile) {
+        imageUploadSuccess = await uploadImage(petId);
+      }
+      
+      if (imageUploadSuccess) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Updated!',
+          text: 'Pet information has been updated successfully',
+          timer: 1500,
+          showConfirmButton: false
         });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Partial Update',
+          text: 'Pet details were updated but image upload failed',
+        });
+      }
+      
+      fetchPets(); 
+      setIsUpdateModalOpen(false);
+      resetForm();
     } catch (error) {
       console.log(error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Something went wrong',
+        text: 'Failed to update pet information',
       });
     }
   }
@@ -229,6 +273,15 @@ export default function Pets() {
   function handleImageChange(e) {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.match('image.*')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid File',
+          text: 'Please select an image file (JPEG, PNG, etc.)',
+        });
+        return;
+      }
+      
       setImageFile(file);
 
       const reader = new FileReader();
@@ -257,7 +310,8 @@ export default function Pets() {
     setType(pet.type);
     setPrice(pet.price);
     setStock(pet.stock);
-    // You might want to set a preview of the existing image here if available
+    setImageFile(null);
+    setImagePreview(null);
     setIsUpdateModalOpen(true);
   }
 
@@ -330,8 +384,6 @@ export default function Pets() {
           </div>
         )}
       </div>
-         
-
 
       {/* Add Pet Modal */}
       {isAddModalOpen && (
@@ -424,17 +476,18 @@ export default function Pets() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="image">
-                  Pet Image
+                  Pet Image <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
                   <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
-                    <span>Choose Image</span>
+                    <span>Upload  Image</span>
                     <input 
                       type="file" 
                       id="image"
                       className="hidden" 
                       accept="image/*"
                       onChange={handleImageChange}
+                      required
                     />
                   </label>
                   {imagePreview && (
@@ -447,6 +500,10 @@ export default function Pets() {
                     </div>
                   )}
                 </div>
+                {imageFile && (
+                  <p className="text-xs text-gray-500 mt-1">{"Upolad to Image "}</p>
+                )}
+                <p className="text-xs text-red-500 mt-1">Image is required to add a new pet</p>
               </div>
               <div className="flex justify-end">
                 <button
@@ -585,6 +642,10 @@ export default function Pets() {
                     </div>
                   )}
                 </div>
+                {imageFile && (
+                  <p className="text-xs text-gray-500 mt-1">{imageFile.name}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Leave empty to keep current image</p>
               </div>
               <div className="flex justify-end">
                 <button
@@ -611,27 +672,3 @@ export default function Pets() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
