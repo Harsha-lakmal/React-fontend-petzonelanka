@@ -18,6 +18,8 @@ export default function Vlogs() {
   });
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     fetchVlogs();
@@ -45,8 +47,6 @@ export default function Vlogs() {
   };
 
   const deleteVlog = (vlogId) => {
-    console.log(vlogId);
-
     Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -80,7 +80,39 @@ export default function Vlogs() {
     });
   };
 
-  const addVlog = () => {
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (vlogId) => {
+    if (!imageFile) return false; // Changed to return false if no image
+
+    const formData = new FormData();
+    formData.append("image", imageFile);
+
+    try {
+      await instance.post(`/vlog/image/${vlogId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      return false;
+    }
+  };
+
+  const addVlog = async () => {
     if (!newVlog.desc || !newVlog.VlogerName) {
       Swal.fire({
         icon: "error",
@@ -90,30 +122,66 @@ export default function Vlogs() {
       return;
     }
 
+    // Check if image is selected - added mandatory image check
+    if (!imageFile) {
+      Swal.fire({
+        icon: "error",
+        title: "Image Required",
+        text: "Please upload an image for the vlog",
+      });
+      return;
+    }
+
     setIsLoading(true);
-    instance
-      .post("/vlog/addVlog", newVlog, {
+    try {
+      const response = await instance.post("/vlog/addVlog", newVlog, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(() => {
-        setNewVlog({ desc: "", VlogerName: "" });
-        setIsAdding(false);
-        fetchVlogs();
-        Swal.fire({
-          icon: "success",
-          title: "Success!",
-          text: "Vlog added successfully",
+      });
+
+      const vlogId = response.data.vlogId;
+      console.log(vlogId);
+      
+      
+      const imageUploadSuccess = await uploadImage(vlogId);
+
+      if (!imageUploadSuccess) {
+        // Delete the vlog if image upload fails
+        await instance.delete(`/vlog/deleteVlog`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          data: { vlogId },
         });
-      })
-      .catch((error) => {
-        console.error(error);
+        
         setIsLoading(false);
         Swal.fire({
           icon: "error",
-          title: "Failed to add vlog",
-          text: error.response?.data?.message || "Something went wrong",
+          title: "Image Upload Failed",
+          text: "The vlog could not be created because the image upload failed.",
         });
+        return;
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Vlog and image added successfully",
       });
+
+      setNewVlog({ desc: "", VlogerName: "" });
+      setImageFile(null);
+      setImagePreview(null);
+      setIsAdding(false);
+      fetchVlogs();
+    } catch (error) {
+      console.error(error);
+      setIsLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to add vlog",
+        text: error.response?.data?.message || "Something went wrong",
+      });
+    }
   };
 
   const updateVlog = () => {
@@ -173,10 +241,18 @@ export default function Vlogs() {
                 ? "bg-red-500 hover:bg-red-600"
                 : "bg-blue-500 hover:bg-blue-600"
             } text-white`}
-            onClick={() => setIsAdding(!isAdding)}
+            onClick={() => {
+              if (isAdding) {
+                // Reset form when canceling
+                setNewVlog({ desc: "", VlogerName: "" });
+                setImageFile(null);
+                setImagePreview(null);
+              }
+              setIsAdding(!isAdding);
+            }}
             disabled={isLoading}
           >
-            <FiPlus /> {isAdding ? "Cancel" : "Add Vlog"}
+            {isAdding ? <FiX /> : <FiPlus />} {isAdding ? "Cancel" : "Add Vlog"}
           </button>
         </div>
 
@@ -216,10 +292,45 @@ export default function Vlogs() {
                   disabled={isLoading}
                 />
               </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Vlog Image* (Required)
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full px-3 py-2 text-sm text-gray-700
+                border border-gray-300 rounded-lg shadow-sm
+                file:mr-4 file:py-1.5 file:px-4
+                file:border-0 file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                disabled:opacity-50 disabled:cursor-not-allowed"
+                    onChange={handleImageChange}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+                {imagePreview ? (
+                  <div className="mt-3 flex justify-center">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-h-64 w-auto object-contain rounded-lg border border-gray-200"
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-red-500">
+                    You must upload an image to create a vlog
+                  </div>
+                )}
+              </div>
               <button
                 className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
                 onClick={addVlog}
-                disabled={isLoading}
+                disabled={isLoading || !imageFile}
               >
                 {isLoading ? (
                   "Processing..."
@@ -310,6 +421,15 @@ export default function Vlogs() {
                   key={vlog.vlogId}
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                 >
+                  {vlog.imageUrl && (
+                    <div className="h-48 overflow-hidden">
+                      <img
+                        src={vlog.imageUrl}
+                        alt={vlog.desc}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                   <div className="p-5 border-b border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-800">
                       {vlog.desc}

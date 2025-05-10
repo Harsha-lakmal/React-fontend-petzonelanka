@@ -54,6 +54,8 @@ export default function Pets() {
         },
       });
       setPetTypes(response.data.petTypes);
+      console.log(response.data.petTypes);
+      
     } catch (error) {
       console.error("Failed to fetch pet types:", error);
       Swal.fire({
@@ -464,8 +466,8 @@ export default function Pets() {
                 >
                   <option value="">Select a pet type</option>
                   {petTypes.map((petType) => (
-                    <option key={petType.petTypeId} value={petType.type}>
-                      {petType.type}
+                    <option key={petType.petTypeId} value={petType.name}>
+                      {petType.name}
                     </option>
                   ))}
                 </select>
