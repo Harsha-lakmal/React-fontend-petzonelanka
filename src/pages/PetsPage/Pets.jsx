@@ -26,34 +26,25 @@ export default function Pets() {
     fetchPets();
   }, []);
 
-  function fetchPets() {
+  async function fetchPets() {
     setLoading(true);
+    setError(null);
     try {
-      instance
-        .get("/pets/getPets", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((response) => {
-          setPets(response.data.pets);
-          setLoading(false);
-        })
-        .catch((error) => {
-          console.log(error);
-          setError("Failed to load pets data");
-          setLoading(false);
-        });
+      const response = await instance.get("/pets/getPets", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setPets(response.data.pets);
     } catch (error) {
-      console.log("error " + error);
-      setError("Something went wrong");
+      console.error("Failed to fetch pets:", error);
+      setError("Failed to load pets data. Please try again.");
+    } finally {
       setLoading(false);
     }
   }
 
   function deletePet(petId) {
-    console.log("pet id delete : " + petId);
-    
     Swal.fire({
       title: 'Are you sure?',
       text: "You won't be able to revert this!",
@@ -62,41 +53,33 @@ export default function Pets() {
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          instance.delete('/pets/deletePet', {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              data: {
-                petId: petId
-              }
-            })
-            .then((response) => {
-              Swal.fire({
-                icon: 'success',
-                title: 'Deleted!',
-                text: 'Pet has been deleted successfully',
-                timer: 1500,
-                showConfirmButton: false
-              });
-              fetchPets();
-            })
-            .catch((error) => {
-              console.log(error);
-              Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to delete pet',
-              });
-            });
+          await instance.delete('/pets/deletePet', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            data: {
+              petId: petId
+            }
+          });
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'Pet has been deleted successfully',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          
+          fetchPets();
         } catch (error) {
-          console.log(error);
+          console.error("Delete error:", error);
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: 'Something went wrong',
+            text: error.response?.data?.message || 'Failed to delete pet',
           });
         }
       }
@@ -126,7 +109,6 @@ export default function Pets() {
   async function addPet(e) {
     e.preventDefault();
     
-    // First check if image is selected and valid
     if (!imageFile) {
       Swal.fire({
         icon: 'error',
@@ -140,7 +122,7 @@ export default function Pets() {
       Swal.fire({
         icon: 'error',
         title: 'Invalid Image',
-        text: 'Please select a valid image file',
+        text: 'Please select a valid image file (JPEG, PNG, etc.)',
       });
       return;
     }
@@ -149,12 +131,11 @@ export default function Pets() {
       name,
       description,
       type,
-      price,
-      stock,
+      price: parseFloat(price),
+      stock: parseInt(stock),
     };
     
     try {
-      // First create the pet
       const response = await instance.post("/pets/createPet", newPet, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,8 +143,6 @@ export default function Pets() {
       });
       
       const createdPetId = response.data.petId;
-      
-      // Then upload the image
       const imageUploadSuccess = await uploadImage(createdPetId);
       
       if (imageUploadSuccess) {
@@ -179,7 +158,7 @@ export default function Pets() {
         setIsAddModalOpen(false);
         resetForm();
       } else {
-        // If image upload failed, delete the pet that was just created
+        // Rollback if image upload fails
         await instance.delete('/pets/deletePet', {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -196,7 +175,7 @@ export default function Pets() {
         });
       }
     } catch (error) {
-      console.log(error);
+      console.error("Add pet error:", error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -208,12 +187,11 @@ export default function Pets() {
   async function updatePet(e) {
     e.preventDefault();
     
-    // Check if image is selected and valid
     if (imageFile && !imageFile.type.match('image.*')) {
       Swal.fire({
         icon: 'error',
         title: 'Invalid Image',
-        text: 'Please select a valid image file',
+        text: 'Please select a valid image file (JPEG, PNG, etc.)',
       });
       return;
     }
@@ -223,19 +201,17 @@ export default function Pets() {
       name,
       description,
       type,
-      price,
-      stock,
+      price: parseFloat(price),
+      stock: parseInt(stock),
     };
     
     try {
-      // First update the pet details
       await instance.put("/pets/updatePet", updateData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
-      // Then upload new image if selected
       let imageUploadSuccess = true;
       if (imageFile) {
         imageUploadSuccess = await uploadImage(petId);
@@ -251,45 +227,55 @@ export default function Pets() {
         });
       } else {
         Swal.fire({
-          icon: 'error',
+          icon: 'warning',
           title: 'Partial Update',
           text: 'Pet details were updated but image upload failed',
         });
       }
       
-      fetchPets(); 
+      fetchPets();
       setIsUpdateModalOpen(false);
       resetForm();
     } catch (error) {
-      console.log(error);
+      console.error("Update pet error:", error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to update pet information',
+        text: error.response?.data?.message || 'Failed to update pet information',
       });
     }
   }
 
   function handleImageChange(e) {
     const file = e.target.files[0];
-    if (file) {
-      if (!file.type.match('image.*')) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Invalid File',
-          text: 'Please select an image file (JPEG, PNG, etc.)',
-        });
-        return;
-      }
-      
-      setImageFile(file);
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.match('image.*')) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid File',
+        text: 'Please select an image file (JPEG, PNG, etc.)',
+      });
+      return;
     }
+    
+    // Validate file size (e.g., 5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'File Too Large',
+        text: 'Please select an image smaller than 5MB',
+      });
+      return;
+    }
+
+    setImageFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   }
 
   function resetForm() {
@@ -308,8 +294,8 @@ export default function Pets() {
     setName(pet.name);
     setDescription(pet.description);
     setType(pet.type);
-    setPrice(pet.price);
-    setStock(pet.stock);
+    setPrice(pet.price.toString());
+    setStock(pet.stock.toString());
     setImageFile(null);
     setImagePreview(null);
     setIsUpdateModalOpen(true);
@@ -321,9 +307,10 @@ export default function Pets() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Pet Management</h1>
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
@@ -331,6 +318,7 @@ export default function Pets() {
             Add New Pet
           </button>
         </div>
+
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -339,30 +327,49 @@ export default function Pets() {
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <strong className="font-bold">Error!</strong>
             <span className="block sm:inline"> {error}</span>
+            <button 
+              onClick={fetchPets}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        ) : pets.length === 0 ? (
+          <div className="text-center py-12">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="mt-2 text-lg font-medium text-gray-900">No pets found</h3>
+            <p className="mt-1 text-gray-500">Add your first pet by clicking the button above</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pets.map((pet) => (
-              <div key={pet.petId} className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105">
+              <div key={pet.petId} className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-[1.02] hover:shadow-lg">
                 <div className="p-5">
                   <div className="flex justify-between items-start">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-800">{pet.name}</h2>
-                      <p className="text-sm text-indigo-600 mt-1">{pet.type}</p>
+                      <p className="text-sm text-indigo-600 mt-1 capitalize">{pet.type}</p>
                     </div>
-                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      Stock: {pet.stock}
+                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
+                      pet.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {pet.stock > 0 ? `In Stock: ${pet.stock}` : 'Out of Stock'}
                     </span>
                   </div>
                   
-                  <p className="mt-3 text-gray-600 text-sm">{pet.description}</p>
+                  <p className="mt-3 text-gray-600 text-sm line-clamp-2">{pet.description}</p>
                   
                   <div className="mt-4 flex justify-between items-center">
                     <p className="text-lg font-bold text-gray-900">Rs. {Number(pet.price).toLocaleString()}</p>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => openUpdateModal(pet)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md"
+                        className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition-colors"
+                        aria-label="Edit pet"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -370,7 +377,8 @@ export default function Pets() {
                       </button>
                       <button
                         onClick={() => deletePet(pet.petId)}
-                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md"
+                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md transition-colors"
+                        aria-label="Delete pet"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -387,16 +395,17 @@ export default function Pets() {
 
       {/* Add Pet Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4">
-            <div className="border-b px-4 py-3 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="border-b px-4 py-3 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-semibold text-gray-800">Add New Pet</h3>
               <button 
                 onClick={() => {
                   setIsAddModalOpen(false);
                   resetForm();
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Close modal"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -406,10 +415,10 @@ export default function Pets() {
             <form onSubmit={addPet} className="p-4">
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-                  Pet Name
+                  Pet Name <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="name"
                   type="text"
                   placeholder="Enter pet name"
@@ -420,10 +429,10 @@ export default function Pets() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="type">
-                  Pet Type
+                  Pet Type <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="type"
                   type="text"
                   placeholder="Dog, Cat, etc."
@@ -434,10 +443,10 @@ export default function Pets() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
-                  Description
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="description"
                   placeholder="Pet description"
                   rows="3"
@@ -446,41 +455,46 @@ export default function Pets() {
                   required
                 ></textarea>
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="price">
-                  Price (Rs.)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="price"
-                  type="number"
-                  placeholder="Price in Rs."
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="stock">
-                  Stock
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="stock"
-                  type="number"
-                  placeholder="Available stock"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="price">
+                    Price (Rs.) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="stock">
+                    Stock <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    id="stock"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="image">
                   Pet Image <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
-                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
-                    <span>Upload  Image</span>
+                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-colors">
+                    <span>Choose Image</span>
                     <input 
                       type="file" 
                       id="image"
@@ -491,7 +505,7 @@ export default function Pets() {
                     />
                   </label>
                   {imagePreview && (
-                    <div className="ml-4 w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
+                    <div className="ml-4 w-16 h-16 rounded-md overflow-hidden border-2 border-gray-300">
                       <img 
                         src={imagePreview} 
                         alt="Preview" 
@@ -500,15 +514,12 @@ export default function Pets() {
                     </div>
                   )}
                 </div>
-                {imageFile && (
-                  <p className="text-xs text-gray-500 mt-1">{"Upolad to Image "}</p>
-                )}
-                <p className="text-xs text-red-500 mt-1">Image is required to add a new pet</p>
+                <p className="text-xs text-gray-500 mt-1">Maximum file size: 5MB. Accepted formats: JPEG, PNG</p>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-2 pt-4 border-t">
                 <button
                   type="button"
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors"
                   onClick={() => {
                     setIsAddModalOpen(false);
                     resetForm();
@@ -518,7 +529,8 @@ export default function Pets() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50"
+                  disabled={!name || !type || !description || !price || !stock || !imageFile}
                 >
                   Add Pet
                 </button>
@@ -530,16 +542,17 @@ export default function Pets() {
 
       {/* Update Pet Modal */}
       {isUpdateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4">
-            <div className="border-b px-4 py-3 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="border-b px-4 py-3 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-lg font-semibold text-gray-800">Update Pet</h3>
               <button 
                 onClick={() => {
                   setIsUpdateModalOpen(false);
                   resetForm();
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Close modal"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -549,10 +562,10 @@ export default function Pets() {
             <form onSubmit={updatePet} className="p-4">
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-name">
-                  Pet Name
+                  Pet Name <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="update-name"
                   type="text"
                   placeholder="Enter pet name"
@@ -563,10 +576,10 @@ export default function Pets() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-type">
-                  Pet Type
+                  Pet Type <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="update-type"
                   type="text"
                   placeholder="Dog, Cat, etc."
@@ -577,10 +590,10 @@ export default function Pets() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-description">
-                  Description
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   id="update-description"
                   placeholder="Pet description"
                   rows="3"
@@ -589,40 +602,45 @@ export default function Pets() {
                   required
                 ></textarea>
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-price">
-                  Price (Rs.)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="update-price"
-                  type="number"
-                  placeholder="Price in Rs."
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-stock">
-                  Stock
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="update-stock"
-                  type="number"
-                  placeholder="Available stock"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-price">
+                    Price (Rs.) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    id="update-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-stock">
+                    Stock <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    id="update-stock"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="update-image">
                   Pet Image
                 </label>
                 <div className="flex items-center">
-                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">
+                  <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-colors">
                     <span>Change Image</span>
                     <input 
                       type="file" 
@@ -633,7 +651,7 @@ export default function Pets() {
                     />
                   </label>
                   {imagePreview && (
-                    <div className="ml-4 w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
+                    <div className="ml-4 w-16 h-16 rounded-md overflow-hidden border-2 border-gray-300">
                       <img 
                         src={imagePreview} 
                         alt="Preview" 
@@ -642,15 +660,12 @@ export default function Pets() {
                     </div>
                   )}
                 </div>
-                {imageFile && (
-                  <p className="text-xs text-gray-500 mt-1">{imageFile.name}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Leave empty to keep current image</p>
+                <p className="text-xs text-gray-500 mt-1">Maximum file size: 5MB. Accepted formats: JPEG, PNG</p>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-2 pt-4 border-t">
                 <button
                   type="button"
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors"
                   onClick={() => {
                     setIsUpdateModalOpen(false);
                     resetForm();
@@ -660,7 +675,8 @@ export default function Pets() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50"
+                  disabled={!name || !type || !description || !price || !stock}
                 >
                   Update Pet
                 </button>
